@@ -48,6 +48,11 @@ let neighborsOf (p:Point) =
 let chooseFrom (choices: 't list) =
     choices[rand.Next choices.Length]
 
+let nextTo (lhs: Point) (rhs: Point) =
+    Direction.All |> List.exists (fun d -> moveTo d lhs = rhs)
+
+let where = List.filter
+
 type Bag<'t when 't: comparison>(items: 't seq) =
     let mutable queue = items |> List.ofSeq
     let mutable set = items |> Set.ofSeq
@@ -68,6 +73,11 @@ type Bag<'t when 't: comparison>(items: 't seq) =
     member this.remove item =
         queue <- queue |> List.filter ((<>) item)
         set <- Set.remove item set
+    member this.random = queue.[rand.Next(queue.Length)]
+    member this.any f = queue |> List.exists f
+    member this.every f = not (queue |> List.exists (not << f))
+    member this.firstWhere f = queue |> List.find f
+    member this.where f = queue |> List.filter f
 
 let nodesOf (maze:Maze) =
     let x, y = maze.size
@@ -212,14 +222,44 @@ let connect (Point(x1,y1,maze)) (Point(x2,y2,_)) =
 
 let aldousBroder (unvisited: Bag<Point>) = seq {
     let mutable currentNode = unvisited.popFront()
-    while not (unvisited.isEmpty) do
-        let (Point(x,y,_)) as dest = chooseFrom (neighborsOf currentNode)
-        printfn "%A" (x,y)
+    while not unvisited.isEmpty do
+        let dest = chooseFrom (neighborsOf currentNode)
         if (unvisited.contains dest) then
             unvisited.remove dest
             connect currentNode dest
         currentNode <- dest
     }
+
+type HunterKillerMode = Hunt | Kill
+let hunterKiller (unvisited: Bag<Point>) = [
+    let mutable mode = Kill
+    let mutable currentNode = unvisited.popFront()
+    let visited = Bag[currentNode]
+    while not unvisited.isEmpty do
+        match mode with
+        | Kill ->
+            // "kill" mode, go back to random walk
+            let candidate = chooseFrom (neighborsOf currentNode)
+            if unvisited.contains candidate then
+                connect currentNode candidate
+                unvisited.remove candidate
+                visited.add candidate
+                currentNode <- candidate
+            else
+                mode <- Hunt
+        | Hunt ->
+            // search for an unvisited node that's next to a visited node and make it the new starting position
+            currentNode <- visited.random
+            match neighborsOf currentNode |> where (fun n -> unvisited.contains n) with
+            | [] -> () // try again
+            | dests ->
+                let dest = chooseFrom dests
+                connect currentNode dest
+                unvisited.remove dest
+                visited.add dest
+                currentNode <- dest
+                mode <- Kill
+    ]
 
 let normalize maze =
     let every f seq = seq |> Seq.exists (not << f) |> not
@@ -240,4 +280,3 @@ let normalize maze =
                     Open
         else state
         )
-

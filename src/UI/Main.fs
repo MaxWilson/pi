@@ -13,7 +13,7 @@ importSideEffects "./styles/global.scss"
 
 type State = { size: int * int; maze: Maze; mode: Maze.MouseMode }
 type Msg =
-    | Smaller | Bigger | Fresh | RandomMaze | RandomCarve | RandomPermute | SkipToEnd | Transform of (State -> State)
+    | Smaller | Bigger | Fresh | AldousBroder | HunterKiller | RandomCarve | RandomPermute | SkipToEnd | Transform of (State -> State)
 let fresh ((x,y) as size) = { size = size; maze = Domain.newMaze(x, y, false); mode = Maze.Inactive }
 let init _ = fresh (20, 12)
 let update msg state =
@@ -25,9 +25,12 @@ let update msg state =
         let (x,y) = state.size
         fresh (x + 1, y + 1)
     | Fresh -> fresh state.size
-    | RandomMaze ->
+    | AldousBroder ->
         let state = fresh state.size
         { state with maze = state.maze |> doAlgorithm aldousBroder }
+    | HunterKiller ->
+        let state = fresh state.size
+        { state with maze = state.maze |> doAlgorithm hunterKiller }
     | RandomCarve ->
         // remove 30% of interior walls
         { state with maze = state.maze |> Domain.carve 30 |> normalize }
@@ -68,8 +71,12 @@ let view state dispatch =
             prop.onClick (fun _ -> dispatch Fresh)
             ]
         Html.button [
-            prop.text "Random Maze"
-            prop.onClick (fun _ -> dispatch RandomMaze)
+            prop.text "Aldous-Broder"
+            prop.onClick (fun _ -> dispatch AldousBroder)
+            ]
+        Html.button [
+            prop.text "Hunt and Kill"
+            prop.onClick (fun _ -> dispatch HunterKiller)
             ]
         Html.button [
             prop.text "Carve"
