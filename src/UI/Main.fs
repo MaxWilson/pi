@@ -27,7 +27,7 @@ let update msg state =
     | Fresh -> fresh state.size
     | RandomMaze ->
         let state = fresh state.size
-        { state with maze = state.maze |> aldousBroder }
+        { state with maze = state.maze |> doAlgorithm aldousBroder }
     | RandomCarve ->
         // remove 30% of interior walls
         { state with maze = state.maze |> Domain.carve 30 |> normalize }

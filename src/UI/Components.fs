@@ -120,7 +120,7 @@ module Maze =
         let yBase = (maze.grid[0].Length - 1) * gridSize
         let maybe (xPixel, yPixel) =
             let x,y = xPixel / gridSize, (yBase - yPixel) / gridSize
-            let candidate = Connection(x,y,maze)
+            let candidate = Connection(x,y,maze.bounds)
             if candidate.isValid() then Some(candidate)
             else None
         match maybe (xPixel, yPixel) with
@@ -166,18 +166,18 @@ module Maze =
                                         Rect.height 20
                                         Rect.width 20
                                         Rect.fill Grey
-                                        if mode = CarvingSpace && Connection(x,y,maze).isValid() then 
+                                        if mode = CarvingSpace && Connection(x,y,maze.bounds).isValid() then 
                                             Rect.opacity 0.8
                                         Shape.key (x,y)
                                         match mode with
                                         | Inactive ->
-                                            Rect.onMouseDown (fun e -> modeChange((if isRightClick e then BuildingWalls else CarvingSpace), Some(Connection(x, y, maze))))
+                                            Rect.onMouseDown (fun e -> modeChange((if isRightClick e then BuildingWalls else CarvingSpace), Some(Connection(x, y, maze.bounds))))
                                         | CarvingSpace ->
-                                            Rect.onMouseOver (fun e -> modeChange(CarvingSpace, Some(Connection(x, y, maze))))
+                                            Rect.onMouseOver (fun e -> modeChange(CarvingSpace, Some(Connection(x, y, maze.bounds))))
                                         | BuildingWalls ->
                                             ()
                                         ]
-                                elif mode = BuildingWalls && Connection(x,y,maze).isValid() then
+                                elif mode = BuildingWalls && Connection(x,y,maze.bounds).isValid() then
                                     rect [
                                         Rect.x (x * 20)
                                         Rect.y (yBase - y * 20)

@@ -5,22 +5,26 @@ type Maze = {
     size: int * int
     grid: MazeElement[][]
     }
-let inbounds maze x y =
-    0 <= x && x < maze.grid.Length && 0 <= y && y < maze.grid[0].Length
+    with
+    member this.bounds =
+        this.grid.Length, this.grid[0].Length
+let inbounds (xBound, yBound) x y =
+    0 <= x && x < xBound && 0 <= y && y < yBound
 let isPotentialConnection x y = x % 2 <> y % 2
 let isPotentialPoint x y = x % 2 = 1 && y % 2 = 1
-type Point = Point of x: int * y:int * context: Maze
+type Point = Point of x: int * y:int * context: (int*int)
     with
     member this.isValid() =
-        let (Point(x,y,maze)) = this
-        isPotentialPoint x y && inbounds maze x y
-type Connection = Connection of x: int * y: int * context: Maze
+        let (Point(x,y,ctx)) = this
+        isPotentialPoint x y && inbounds ctx x y
+type Connection = Connection of x: int * y: int * context: (int*int)
     with
     member this.isValid() =
-        let (Connection(x,y,maze)) = this
-        isPotentialConnection x y && inbounds maze x y 
+        let (Connection(x,y,ctx)) = this
+        isPotentialConnection x y && inbounds ctx x y
 
 type Direction = Up | Down | Left | Right
+    with static member All = [Up;Down;Left;Right]
 
 let moveTo direction (Point(x, y, ctx)) =
     match direction with
@@ -37,6 +41,46 @@ let connectionTo direction (Point(x, y, ctx)) =
         | Left -> x-1, y
         | Right -> x+1, y
     |> fun (x,y) -> Connection(x,y,ctx)
+
+let neighborsOf (p:Point) =
+    Direction.All |> List.map (fun d -> moveTo d p) |> List.filter (fun dest -> dest.isValid())
+
+let chooseFrom (choices: 't list) =
+    choices[rand.Next choices.Length]
+
+type Bag<'t when 't: comparison>(items: 't seq) =
+    let mutable queue = items |> List.ofSeq
+    let mutable set = items |> Set.ofSeq
+    member this.first = queue.Head
+    member this.isEmpty = queue.IsEmpty
+    member this.contains item = set.Contains item
+    member this.add item =
+        queue <- queue@[item]
+        set <- set |> Set.add item
+    member this.addFront item =
+        queue <- item::queue
+        set <- set |> Set.add item
+    member this.popFront() =
+        let v = queue.Head
+        queue <- queue.Tail
+        set <- Set.remove v set
+        v
+    member this.remove item =
+        queue <- queue |> List.filter ((<>) item)
+        set <- Set.remove item set
+
+let nodesOf (maze:Maze) =
+    let x, y = maze.size
+    let toPoint (x,y) =
+        let p = Point(x*2-1, y*2-1,maze.bounds)
+        if not <| p.isValid() then failwith $"Invalid point: {p}"
+        p
+    [|
+        for x in 1..x do
+            for y in 1..y do
+                (x,y) |> toPoint
+        |]
+
 
 let newMaze (width, height, initialConnection) =
     let grid = Array.init (width*2+1) (fun _ -> Array.create (height*2+1) Closed)
@@ -68,7 +112,7 @@ let permute percent maze =
         let (xBound, yBound) = grid[0].Length - 2, grid.Length - 2
         0 < x && x < xBound && 0 < y && y < yBound
     maze |> map (fun x y state ->
-                if (Connection(x,y,maze).isValid()) && interior x y && rand.Next(100) < percent then
+                if (Connection(x,y,maze.bounds).isValid()) && interior x y && rand.Next(100) < percent then
                     match state with
                     | Open -> Closed
                     | Closed -> Open
@@ -82,7 +126,7 @@ let carve percent maze =
         let (xBound, yBound) = grid[0].Length - 2, grid.Length - 2
         0 < x && x < xBound && 0 < y && y < yBound
     maze |> map (fun x y state ->
-        if (Connection(x,y,maze).isValid()) && interior x y && rand.Next(100) < percent then
+        if (Connection(x,y,maze.bounds).isValid()) && interior x y && rand.Next(100) < percent then
             match state with
             | Open -> Open
             | Closed -> Open
@@ -92,7 +136,7 @@ let carve percent maze =
 let randomConnected maze =
     let x, y = maze.size
     let toPoint (x,y) =
-        let p = Point(x*2-1, y*2-1,maze)
+        let p = Point(x*2-1, y*2-1,maze.bounds)
         if not <| p.isValid() then failwith $"Invalid point: {p}"
         p
     let nodes = [|
@@ -104,7 +148,7 @@ let randomConnected maze =
     let mutable tunnels = Set.empty<int*int>
     let directions = [Up;Down;Left;Right]
     let toPoint (x,y) =
-        let p = Point(x*2-1, y*2-1,maze)
+        let p = Point(x*2-1, y*2-1,maze.bounds)
         if not <| p.isValid() then failwith $"Invalid point: {p}"
         p
     while connectedNodes.Count < nodes.Length do
@@ -133,42 +177,9 @@ let toAscii maze =
         s.Append "\n" |> ignore
     s.ToString()
 
-let aldousBroder maze =
-    let x, y = maze.size
-    let toPoint (x,y) =
-        let p = Point(x*2-1, y*2-1, maze)
-        if not <| p.isValid() then failwith $"Invalid point: {p}"
-        p
-    let nodes = [|
-        for x in 1..x do
-            for y in 1..y do
-                (x,y) |> toPoint
-        |]
-    let mutable currentNode = (1,1) |> toPoint
-    let mutable connectedNodes = Set.ofSeq [currentNode]
-    let mutable tunnels = Set.empty<int*int>
-    let directions = [Up;Down;Left;Right]
-    let toPoint (x,y) =
-        let p = Point(x*2-1, y*2-1, maze)
-        if not <| p.isValid() then failwith $"Invalid point: {p}"
-        p
-    while connectedNodes.Count < nodes.Length do
-        let rec next() =
-            let direction = directions[rand.Next(directions.Length)]
-            let candidate = currentNode |> moveTo direction
-            if candidate.isValid() then
-                candidate, direction
-            else next()
-        let candidate, direction = next()
-
-        if connectedNodes.Contains(candidate) |> not then
-            let (Connection(x,y,maze)) = currentNode |> connectionTo direction
-            tunnels <- tunnels |> Set.add (x,y)
-            currentNode <- candidate
-            connectedNodes <- connectedNodes |> Set.add candidate
-        else
-            // don't add a tunnel, just move
-            currentNode <- candidate
+let doAlgorithm algorithm maze =
+    let nodes = nodesOf maze |> Bag
+    let mutable tunnels = algorithm nodes |> Seq.choose (function Connection(x,y,_) as c when c.isValid() -> Some (x,y) | _ -> None) |> Set.ofSeq
     let perimeter =
         [|
             for y in 0..maze.grid.Length - 1 do
@@ -179,7 +190,7 @@ let aldousBroder maze =
                     for x in [0; maze.grid[y].Length - 1] do
                         x, y
             |]
-        |> Array.filter (fun (x,y) -> (Connection(x,y,maze)).isValid())
+        |> Array.filter (fun (x,y) -> (Connection(x,y,maze.bounds)).isValid())
     let entry = perimeter[rand.Next(perimeter.Length)]
     let exit =
         // Don't let the entrance and exit be too close to each other
@@ -196,11 +207,25 @@ let aldousBroder maze =
     tunnels <- tunnels |> Set.add entry |> Set.add exit
     maze |> map (fun x y state -> if tunnels |> Set.contains (x,y) then Open else state)
 
+let connect (Point(x1,y1,maze)) (Point(x2,y2,_)) =
+    Connection((x1+x2)/2, (y1+y2)/2, maze)
+
+let aldousBroder (unvisited: Bag<Point>) = seq {
+    let mutable currentNode = unvisited.popFront()
+    while not (unvisited.isEmpty) do
+        let (Point(x,y,_)) as dest = chooseFrom (neighborsOf currentNode)
+        printfn "%A" (x,y)
+        if (unvisited.contains dest) then
+            unvisited.remove dest
+            connect currentNode dest
+        currentNode <- dest
+    }
+
 let normalize maze =
     let every f seq = seq |> Seq.exists (not << f) |> not
     maze |> map (fun x y state ->
         // for all of the corners, they become open if all the connections around them are open
-        if not (Connection(x,y,maze).isValid() || Point(x,y,maze).isValid()) then
+        if not (Connection(x,y,maze.bounds).isValid() || Point(x,y,maze.bounds).isValid()) then
             let within start finish n = start <= n && n < finish
             let get(x,y) =
                 if within 0 maze.grid.Length x && within 0 maze.grid[x].Length y then
