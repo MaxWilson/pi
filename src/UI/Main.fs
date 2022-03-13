@@ -41,10 +41,10 @@ let update msg state =
 let view state dispatch =
     let modeEvent(mode', connection: Connection option) =
         match mode', connection with
-        | Maze.CarvingSpace, Some(Connection(x', y')) when Connection(x',y').isValid() ->
+        | Maze.CarvingSpace, Some(Connection(x', y', _) as c) when c.isValid() ->
             Transform (fun state -> { state with mode = mode'; maze = state.maze |> map (fun x y state -> if (x,y) = (x',y') then Open else state) |> normalize })
             |> dispatch
-        | Maze.BuildingWalls, Some(Connection(x', y')) when Connection(x',y').isValid() ->
+        | Maze.BuildingWalls, Some(Connection(x', y', _) as c) when c.isValid() ->
             let m' = state.maze |> map (fun x y state -> if (x,y) = (x',y') then Closed else state) |> normalize
             Transform (fun state -> { state with mode = mode'; maze = state.maze |> map (fun x y state -> if (x,y) = (x',y') then Closed else state) |> normalize })
             |> dispatch

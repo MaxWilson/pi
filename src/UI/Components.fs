@@ -120,7 +120,7 @@ module Maze =
         let yBase = (maze.grid[0].Length - 1) * gridSize
         let maybe (xPixel, yPixel) =
             let x,y = xPixel / gridSize, (yBase - yPixel) / gridSize
-            let candidate = Connection(x,y)
+            let candidate = Connection(x,y,maze)
             if candidate.isValid() then Some(candidate)
             else None
         match maybe (xPixel, yPixel) with
@@ -166,18 +166,18 @@ module Maze =
                                         Rect.height 20
                                         Rect.width 20
                                         Rect.fill Grey
-                                        if mode = CarvingSpace && Connection(x,y).isValid() then 
+                                        if mode = CarvingSpace && Connection(x,y,maze).isValid() then 
                                             Rect.opacity 0.8
                                         Shape.key (x,y)
                                         match mode with
                                         | Inactive ->
-                                            Rect.onMouseDown (fun e -> modeChange((if isRightClick e then BuildingWalls else CarvingSpace), Some(Connection(x, y))))
+                                            Rect.onMouseDown (fun e -> modeChange((if isRightClick e then BuildingWalls else CarvingSpace), Some(Connection(x, y, maze))))
                                         | CarvingSpace ->
-                                            Rect.onMouseOver (fun e -> modeChange(CarvingSpace, Some(Connection(x, y))))
+                                            Rect.onMouseOver (fun e -> modeChange(CarvingSpace, Some(Connection(x, y, maze))))
                                         | BuildingWalls ->
                                             ()
                                         ]
-                                elif mode = BuildingWalls && Connection(x,y).isValid() then
+                                elif mode = BuildingWalls && Connection(x,y,maze).isValid() then
                                     rect [
                                         Rect.x (x * 20)
                                         Rect.y (yBase - y * 20)
@@ -194,15 +194,19 @@ module Maze =
             "onMouseEnter" ==> fun _ -> modeChange(Inactive, None)
             "onMouseDown" ==> fun e ->
                 let pos = e?target?getStage()?getPointerPosition()
-                let pos = nearestIntersection maze (pos?x, pos?y)
-                if isRightClick e then
-                    modeChange(BuildingWalls, Some(pos))
-                else
-                    modeChange(CarvingSpace, Some(pos))
+                // if it's within the maze
+                if pos?x < maze.grid.Length * 20 && pos?y < maze.grid[0].Length then
+                    let pos = nearestIntersection maze (pos?x, pos?y)
+                    if isRightClick e then
+                        modeChange(BuildingWalls, Some(pos))
+                    else
+                        modeChange(CarvingSpace, Some(pos))
             "onContextMenu" ==> fun e -> e?evt?preventDefault()
             if mode = BuildingWalls then
                 "onMouseOver" ==> fun e ->
                     let pos = e?target?getStage()?getPointerPosition()
-                    let pos = nearestIntersection maze (pos?x, pos?y)
-                    modeChange(BuildingWalls, Some(pos))
+                    if pos?x < maze.grid.Length * 20 && pos?y < maze.grid[0].Length then
+                        // if it's within the maze
+                        let pos = nearestIntersection maze (pos?x, pos?y)
+                        modeChange(BuildingWalls, Some(pos))
             ]

@@ -1,8 +1,12 @@
 module Tests
 open Expecto
 open Hedgehog
+#if INTERACTIVE
+#r "nuget: Unquote"
+#endif
 open Swensen.Unquote
 open Domain
+open UI.Components
 
 module Array =
     let every f arr = arr |> Array.exists (not << f) |> not
@@ -42,7 +46,8 @@ let allTests = testList "All" [
             let y = y * 2 + 1
             let reverse = function Up -> Down | Down -> Up | Left -> Right | Right -> Left
             let! direction = chooseFrom [Up;Down;Left;Right]
-            let startPoint = Point(x,y)
+            let maze = Domain.newMaze(100, 100, false)
+            let startPoint = Point(x,y,maze)
             let endPoint = moveTo direction startPoint
             test <@ (connectionTo direction startPoint) = (connectionTo (reverse direction) endPoint) @>
             test <@ startPoint.isValid() @>
@@ -54,9 +59,11 @@ let allTests = testList "All" [
         property {
             let! xPixel = Range.linear 0 100 |> Gen.int32
             let! yPixel = Range.linear 0 100 |> Gen.int32
-            let (Domain.Connection(x2, y2)) = UI.Components.Maze.nearestIntersection (newMaze(100, 100, true)) (xPixel,yPixel)
+            let maze = (newMaze(100, 100, true))
+            let (Connection(x2, y2, maze)) = Maze.nearestIntersection maze (xPixel,yPixel)
             let closeTo n m = abs(n-m) <= 20 || (x2 = 0 || y2 = 0) && abs(n-m) <= 30 // in corner cases the nearest connection could be up to 30 pixels away
-            test <@ closeTo (x2*20+10) xPixel && closeTo (y2*20+10) yPixel @>
+            let yBase = (maze.grid[0].Length - 1) * 20
+            test <@ closeTo (x2*20+10) xPixel && closeTo (yBase - (y2*20+10)) yPixel @>
             }
         |> Property.check
 ]
