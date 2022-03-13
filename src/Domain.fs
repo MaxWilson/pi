@@ -182,12 +182,12 @@ let doAlgorithm algorithm maze =
     let mutable tunnels = algorithm nodes |> Seq.choose (function Connection(x,y,_) as c when c.isValid() -> Some (x,y) | _ -> None) |> Set.ofSeq
     let perimeter =
         [|
-            for y in 0..maze.grid.Length - 1 do
-                if (y = 0 || y = maze.grid.Length - 1) then
-                    for x in 0..maze.grid[y].Length - 1 do
+            for x in 0..maze.grid.Length - 1 do
+                if (x = 0 || x = maze.grid.Length - 1) then
+                    for y in 0..maze.grid[x].Length - 1 do
                         x, y
                 else
-                    for x in [0; maze.grid[y].Length - 1] do
+                    for y in [0; maze.grid[x].Length - 1] do
                         x, y
             |]
         |> Array.filter (fun (x,y) -> (Connection(x,y,maze.bounds)).isValid())
