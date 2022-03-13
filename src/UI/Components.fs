@@ -75,7 +75,7 @@ module Konva =
     let rect (props: IRectProperty list) = Interop.reactApi.createElement(import "Rect" "react-konva", createObj !!props)
     let text props = Interop.reactApi.createElement(import "Text" "react-konva", createObj !!props)
 [<Erase>]
-type Color = Red | Green | Blue | Yellow | Grey | Orange | LightGrey
+type Color = Red | Green | Blue | Yellow | Grey | Orange | LightGrey | DarkGrey | Black
 open Konva.Interop
 
 type Shape =
@@ -88,6 +88,7 @@ type Shape =
     static member inline y (y:int) = mkShapeAttr "y" y
     static member inline x (x:float) = mkShapeAttr "x" x
     static member inline y (y:float) = mkShapeAttr "y" y
+    static member inline opacity (v:float) = mkShapeAttr "opacity" v
     static member inline fill (color:Color) = mkShapeAttr "fill" color
     static member inline fill (color:string) = mkShapeAttr "fill" color
     static member draggable = mkShapeAttr "draggable" true
@@ -114,10 +115,11 @@ module Maze =
     open Domain
     open Fable.Core.JsInterop
     type MouseMode = CarvingSpace | BuildingWalls | Inactive
-    let nearestIntersection (xPixel, yPixel) =
+    let nearestIntersection maze (xPixel, yPixel) =
         let gridSize = 20
+        let yBase = (maze.grid[0].Length - 1) * gridSize
         let maybe (xPixel, yPixel) =
-            let x,y = xPixel / gridSize, yPixel / gridSize
+            let x,y = xPixel / gridSize, (yBase - yPixel) / gridSize
             let candidate = Connection(x,y)
             if candidate.isValid() then Some(candidate)
             else None
@@ -163,7 +165,9 @@ module Maze =
                                         Rect.y (yBase - y * 20)
                                         Rect.height 20
                                         Rect.width 20
-                                        Rect.fill (if mode <> Inactive && Connection(x,y).isValid() then LightGrey else Grey)
+                                        Rect.fill Grey
+                                        if mode = CarvingSpace && Connection(x,y).isValid() then 
+                                            Rect.opacity 0.8
                                         Shape.key (x,y)
                                         match mode with
                                         | Inactive ->
@@ -173,14 +177,15 @@ module Maze =
                                         | BuildingWalls ->
                                             ()
                                         ]
-                                elif mode <> Inactive && Connection(x,y).isValid() then
+                                elif mode = BuildingWalls && Connection(x,y).isValid() then
                                     rect [
                                         Rect.x (x * 20)
-                                        Rect.y ((int h - 20) - y * 20)
+                                        Rect.y (yBase - y * 20)
                                         Rect.height 20
                                         Rect.width 20
-                                        Rect.fill LightGrey
+                                        Rect.fill Grey
                                         Shape.key (x,y)
+                                        Rect.opacity 0.3
                                         ]
                         ]
                     ]
@@ -189,7 +194,7 @@ module Maze =
             "onMouseEnter" ==> fun _ -> modeChange(Inactive, None)
             "onMouseDown" ==> fun e ->
                 let pos = e?target?getStage()?getPointerPosition()
-                let pos = nearestIntersection(pos?x, pos?y)
+                let pos = nearestIntersection maze (pos?x, pos?y)
                 if isRightClick e then
                     modeChange(BuildingWalls, Some(pos))
                 else
@@ -198,6 +203,6 @@ module Maze =
             if mode = BuildingWalls then
                 "onMouseOver" ==> fun e ->
                     let pos = e?target?getStage()?getPointerPosition()
-                    let pos = nearestIntersection(pos?x, pos?y)
+                    let pos = nearestIntersection maze (pos?x, pos?y)
                     modeChange(BuildingWalls, Some(pos))
             ]

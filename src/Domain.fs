@@ -53,8 +53,8 @@ let newMaze (width, height, initialConnection) =
 
 let map f maze =
     let grid' =
-        maze.grid |> Array.mapi (fun y row ->
-            row |> Array.mapi (fun x state -> f x y state))
+        maze.grid |> Array.mapi (fun x column ->
+            column |> Array.mapi (fun y state -> f x y state))
     { maze with grid = grid' }
 
 let permute percent maze =
@@ -120,6 +120,15 @@ let randomConnected maze =
                 ()
     maze |> map (fun x y state -> if tunnels |> Set.contains (x,y) then Open else state)
 
+let toAscii maze =
+    let s = System.Text.StringBuilder()
+    s.Append "\n" |> ignore
+    for y in 0..maze.grid[0].Length - 1  do
+        for x in 0..maze.grid.Length - 1 do
+            (if maze.grid[x][y] = Closed then "x" else " ") |> s.Append |> ignore
+        s.Append "\n" |> ignore
+    s.ToString()
+
 let aldousBroder maze =
     let x, y = maze.size
     let toPoint (x,y) =
@@ -127,8 +136,8 @@ let aldousBroder maze =
         if not <| p.isValid() then failwith $"Invalid point: {p}"
         p
     let nodes = [|
-        for y in 1..y do
-            for x in 1..x do
+        for x in 1..x do
+            for y in 1..y do
                 (x,y) |> toPoint
         |]
     let mutable currentNode = (1,1) |> toPoint
@@ -140,7 +149,7 @@ let aldousBroder maze =
         if not <| p.isValid() then failwith $"Invalid point: {p}"
         p
     let inBounds (Point(x,y)) =
-        0 < y && y < maze.grid.Length && 0 < x && x < maze.grid[y].Length
+        0 < x && x < maze.grid.Length && 0 < y && y < maze.grid[x].Length
     while connectedNodes.Count < nodes.Length do
         let rec next() =
             let direction = directions[rand.Next(directions.Length)]
@@ -192,8 +201,8 @@ let normalize maze =
         if not (Connection(x,y).isValid() || Point(x,y).isValid()) then
             let within start finish n = start <= n && n < finish
             let get(x,y) =
-                if within 0 maze.grid.Length y && within 0 maze.grid[y].Length x then
-                    maze.grid[y][x] |> Some
+                if within 0 maze.grid.Length x && within 0 maze.grid[x].Length y then
+                    maze.grid[x][y] |> Some
                 else None
             if [x+1,y;x-1,y;x,y+1;x,y-1]
                 |> List.map get
@@ -204,3 +213,4 @@ let normalize maze =
                     Open
         else state
         )
+

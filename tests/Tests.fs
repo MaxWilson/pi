@@ -54,7 +54,7 @@ let allTests = testList "All" [
         property {
             let! xPixel = Range.linear 0 100 |> Gen.int32
             let! yPixel = Range.linear 0 100 |> Gen.int32
-            let (Domain.Connection(x2, y2)) = UI.Components.Maze.nearestIntersection(xPixel,yPixel)
+            let (Domain.Connection(x2, y2)) = UI.Components.Maze.nearestIntersection (newMaze(100, 100, true)) (xPixel,yPixel)
             let closeTo n m = abs(n-m) <= 20 || (x2 = 0 || y2 = 0) && abs(n-m) <= 30 // in corner cases the nearest connection could be up to 30 pixels away
             test <@ closeTo (x2*20+10) xPixel && closeTo (y2*20+10) yPixel @>
             }
