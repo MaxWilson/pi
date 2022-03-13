@@ -35,20 +35,20 @@ let connectionTo direction (Point(x, y)) =
     |> Connection
 
 let newMaze (width, height, initialConnection) =
-    let grid = Array.init (height*2+1) (fun _ -> Array.create (width*2+1) Closed)
+    let grid = Array.init (width*2+1) (fun _ -> Array.create (height*2+1) Closed)
     // tunnel out all of the "rooms"
     for x in [1..2..width*2] do
         for y in [1..2..height*2] do
-            grid[y][x] <- Open
+            grid[x][y] <- Open
     if initialConnection then
         // tunnel out all of the left/right corridors (but not the outside walls)
         for x in [2..2..width*2-2] do
             for y in [1..2..height*2] do
-                grid[y][x] <- Open
+                grid[x][y] <- Open
         // tunnel out all of the up/down corridors (but not the outside walls)
         for x in [1..2..width*2] do
             for y in [2..2..height*2-2] do
-                grid[y][x] <- Open
+                grid[x][y] <- Open
     { size = (width, height); grid = grid }
 
 let map f maze =

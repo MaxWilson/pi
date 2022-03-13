@@ -75,7 +75,7 @@ module Konva =
     let rect (props: IRectProperty list) = Interop.reactApi.createElement(import "Rect" "react-konva", createObj !!props)
     let text props = Interop.reactApi.createElement(import "Text" "react-konva", createObj !!props)
 [<Erase>]
-type Color = Red | Green | Blue | Yellow | Grey | Orange
+type Color = Red | Green | Blue | Yellow | Grey | Orange | LightGrey
 open Konva.Interop
 
 type Shape =
@@ -146,22 +146,24 @@ module Maze =
     let render (maze: Maze, mode: MouseMode, modeChange) =
         let window = Browser.Dom.window;
         let isRightClick e = e?evt?button = 2
+        let h = window.innerHeight - 100.
+        let yBase = (maze.grid[0].Length - 1) * 20
         stage [
             "width" ==> window.innerWidth - 100.
-            "height" ==> window.innerHeight - 100.
+            "height" ==> h
             "children" ==> [
                 layer [
                     "children" ==> [
                         let zip a b = a,b
-                        for y, row in maze.grid |> Array.mapi zip do
-                            for x, cell in row |> Array.mapi zip do
+                        for x, column in maze.grid |> Array.mapi zip do
+                            for y, cell in column |> Array.mapi zip do
                                 if cell = Closed then
                                     rect [
                                         Rect.x (x * 20)
-                                        Rect.y (y * 20)
+                                        Rect.y (yBase - y * 20)
                                         Rect.height 20
                                         Rect.width 20
-                                        Rect.fill Grey
+                                        Rect.fill (if mode <> Inactive && Connection(x,y).isValid() then LightGrey else Grey)
                                         Shape.key (x,y)
                                         match mode with
                                         | Inactive ->
@@ -170,6 +172,15 @@ module Maze =
                                             Rect.onMouseOver (fun e -> modeChange(CarvingSpace, Some(Connection(x, y))))
                                         | BuildingWalls ->
                                             ()
+                                        ]
+                                elif mode <> Inactive && Connection(x,y).isValid() then
+                                    rect [
+                                        Rect.x (x * 20)
+                                        Rect.y ((int h - 20) - y * 20)
+                                        Rect.height 20
+                                        Rect.width 20
+                                        Rect.fill LightGrey
+                                        Shape.key (x,y)
                                         ]
                         ]
                     ]
