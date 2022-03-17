@@ -1,1 +1,1 @@
-[https://maxwilson.github.io/Mazes/](https://maxwilson.github.io/Mazes/)
+[https://maxwilson.github.io/LearnPi/](https://maxwilson.github.io/LearnPi/)
