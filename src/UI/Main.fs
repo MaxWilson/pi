@@ -1,13 +1,10 @@
 ﻿module UI.Main
 
-open UI.Components
 open Browser.Dom
 open Fable.Core.JsInterop
 open Elmish
 open Elmish.React
 open Feliz
-open Konva
-open Domain
 
 importSideEffects "./styles/global.scss"
 
